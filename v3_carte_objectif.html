@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    
+        <style>
+            .carte_border {
+                fill: white;
+                stroke: black;
+                stroke-width: 1;
+            }
+            .couts_border {
+                fill: none;
+                stroke: black;
+                stroke-width: 1;
+            }
+            .objectifs_border {
+                fill: none;
+                stroke: black;
+                stroke-width: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <div>
+            <div id="plateau"></div>
+        </div>
+        <script src="./node_module/d3/d3.js"></script>
+        <script>
+
+//////////////////// position page ////////////////////
+let A4_H_CM = 29.7;
+let A4_W_CM = 21;
+let SLIVE_H_CM = 9;
+let SLIVE_W_CM = 6.6;
+// let SLIVE_H_CM = 6.8;
+// let SLIVE_W_CM = 4.4;
+
+let nb_colonne = Math.trunc(A4_H_CM / SLIVE_H_CM);
+let nb_ligne = Math.trunc(A4_W_CM / SLIVE_W_CM);
+let nb_by_page = nb_ligne * nb_colonne;
+
+let CM_BY_PX = 37.7953;
+
+let A4_H = A4_H_CM * CM_BY_PX;
+let A4_W = A4_W_CM * CM_BY_PX;
+let SLIVE_H = SLIVE_H_CM * CM_BY_PX;
+let SLIVE_W = SLIVE_W_CM * CM_BY_PX;
+
+let marge_W = (A4_W - SLIVE_W * nb_ligne) / 2;
+let marge_H = (A4_H - SLIVE_H * nb_colonne) / 2;
+
+//////////////////// carte information ////////////////////
+let NB_OBJ_TYPE = 6;
+let img_size = 32;
+let cout_H = SLIVE_H * 5/8;
+let cout_W = SLIVE_W * 1/6;
+let objectif_H = SLIVE_H * 3/8;
+
+let nb_carte_gen = 0;
+
+//////////////////// carte information ////////////////////
+// carte 1-2-3-4
+let objectifs_1_1_1_1 = getCombinaison('012345', 4);
+objectifs_1_1_1_1.forEach((objectif_1_1_1_1) => {
+    genObjectif(objectif_1_1_1_1.map((i) => 'objectif_'+i));
+})
+
+let combinaisons_1_2 = getCombinaison('012345', 2);
+combinaisons_1_2.forEach((combinaison_1_2) => {
+    // carte 1-1-2-2
+    genObjectif(['objectif_'+combinaison_1_2[0], 'objectif_'+combinaison_1_2[0], 'objectif_'+combinaison_1_2[1], 'objectif_'+combinaison_1_2[1]]);
+    // carte 1-1-1-2
+    genObjectif(['objectif_'+combinaison_1_2[0], 'objectif_'+combinaison_1_2[0], 'objectif_'+combinaison_1_2[0], 'objectif_'+combinaison_1_2[1]]);
+    genObjectif(['objectif_'+combinaison_1_2[0], 'objectif_'+combinaison_1_2[1], 'objectif_'+combinaison_1_2[1], 'objectif_'+combinaison_1_2[1]]);
+})
+
+//////////////////// function gen ////////////////////
+function getCombinaison(elements_posible, listSize) {
+    let combinaison = [];
+    const first_elements_posible = elements_posible.substring(0, elements_posible.length-listSize+1).split('');
+    if (listSize === 1) {
+        return first_elements_posible;
+    }
+    first_elements_posible.forEach((first_element_posible, idx) => {
+        const combinaisons_1_moin = getCombinaison(elements_posible.substring(idx+1), listSize-1);
+        const combinaison_with_this_element = combinaisons_1_moin.map((combinaison_1_moin) => {
+            return [first_element_posible].concat(combinaison_1_moin);
+        });
+        combinaison = combinaison.concat(combinaison_with_this_element);
+    })
+    return combinaison;
+}
+
+function genObjectif(objectifs, objectifs2) {
+    let idx_carte = nb_carte_gen++;
+
+    let idx_page = Math.trunc(idx_carte / nb_by_page);
+    let idx_carte_on_page = idx_carte - nb_by_page * idx_page;
+    let idx_ligne = Math.trunc((idx_carte_on_page / nb_colonne) % nb_ligne); 
+    let idx_colonne = Math.trunc(idx_carte_on_page % nb_colonne); 
+
+    // page
+    var page = d3.select('#page'+idx_page);
+    if(page.size() == 0) {
+        page = d3.select('#plateau').append('svg')
+            .attr('transform', 'translate(0, 0)')
+            .attr('id', 'page'+idx_page)
+            .attr('height', A4_H)
+            .attr('width', A4_W)
+    }
+
+    // cree la carte
+    let carte = d3.select('#page'+idx_page).append('g')
+        .attr('transform', `translate(${idx_colonne*SLIVE_W+marge_W}, ${idx_ligne*SLIVE_H+marge_H})`)
+        .attr('id', 'carte'+idx_carte);
+
+    carte.append('rect')
+        .classed('carte_border', true)
+        .attr('x', 0) 
+        .attr('y', 0) 
+        .attr('width', SLIVE_W) 
+        .attr('height', SLIVE_H);
+        
+    carte.append('path')
+        .classed('objectifs_border', true)
+        .attr('d', `M 0 ${SLIVE_H-objectif_H} L ${SLIVE_W} ${SLIVE_H-objectif_H}`);
+        
+    
+    // cree les objectifs
+    let D3_objectifs = carte.append('g')
+        .classed('objectifs', true)
+        .attr('transform', `translate(${(SLIVE_W/2)-(objectifs.length*img_size/2)}, ${(SLIVE_H-objectif_H/2)-img_size/2})`)
+		
+	let posYLine1 = !objectifs2 ? 0 : -img_size / 2;
+    objectifs.forEach((objectif, idx)=> {
+        D3_objectifs.append('image')
+            .attr('transform', `translate(${idx*img_size}, ${posYLine1})`)
+            .attr('href', `./symbole/${objectif}.png`)
+    });
+	
+	if (objectifs2) {
+		objectifs2.forEach((objectif, idx)=> {
+			D3_objectifs.append('image')
+				.attr('transform', `translate(${idx*img_size}, ${img_size / 2})`)
+				.attr('href', `./symbole/${objectif}.png`)
+		});
+	}
+}
+
+        </script>
+    </body>
+</html>

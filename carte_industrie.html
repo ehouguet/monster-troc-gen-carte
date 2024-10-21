@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html>
+    <head>
+    
+        <style>
+            .carte_border {
+                fill: white;
+                stroke: black;
+                stroke-width: 1;
+            }
+            .couts_border {
+                fill: none;
+                stroke: black;
+                stroke-width: 1;
+            }
+            .effets_border {
+                fill: none;
+                stroke: black;
+                stroke-width: 1;
+            }
+        </style>
+    </head>
+    <body>
+        <div>
+            <div id="plateau"></div>
+        </div>
+        <script src="./node_module/d3/d3.js"></script>
+        <script>
+
+//////////////////// position page ////////////////////
+let A4_H_CM = 29.7;
+let A4_W_CM = 21;
+let SLIVE_H_CM = 9;
+let SLIVE_W_CM = 6.6;
+
+let nb_colonne = Math.trunc(A4_H_CM / SLIVE_H_CM);
+let nb_ligne = Math.trunc(A4_W_CM / SLIVE_W_CM);
+let nb_by_page = nb_ligne * nb_colonne;
+
+let CM_BY_PX = 37.7953;
+
+let A4_H = A4_H_CM * CM_BY_PX;
+let A4_W = A4_W_CM * CM_BY_PX;
+let SLIVE_H = SLIVE_H_CM * CM_BY_PX;
+let SLIVE_W = SLIVE_W_CM * CM_BY_PX;
+
+let marge_W = (A4_W - SLIVE_W * nb_ligne) / 2;
+let marge_H = (A4_H - SLIVE_H * nb_colonne) / 2;
+
+//////////////////// carte information ////////////////////
+let NB_SRC = 7;
+let img_size = 32;
+let cout_H = SLIVE_H * 1/8;
+let cout_W = SLIVE_W * 13/16;
+let effet_H = SLIVE_H * 3/8;
+let nb_page = (NB_SRC * 6 + 2) / nb_by_page;
+
+let nb_carte_gen = 0;
+
+//////////////////// carte information ////////////////////
+for(let i=0; i<nb_page; i++) {
+    d3.select('#plateau').append('svg')
+        .attr('transform', 'translate(0, 0)')
+        .attr('id', 'page'+i)
+        .attr('height', A4_H)
+        .attr('width', A4_W)
+}
+
+// usine creation
+genUsine(['ressource_0', 'ressource_0'], ['usine']);
+genUsine(['ressource_1', 'ressource_1'], ['usine']);
+genUsine(['ressource_2', 'ressource_2'], ['usine']);
+genUsine(['ressource_3', 'ressource_3'], ['usine']);
+genUsine(['ressource_4', 'ressource_4'], ['usine']);
+genUsine(['ressource_5', 'ressource_5'], ['objectif']);
+genUsine(['ressource_6', 'ressource_6'], ['objectif']);
+
+// usine transfo
+for(let i=0; i<NB_SRC; i++) {
+    genUsine(
+        ['ressource_'+i, 'ressource_'+i, 'ressource_'+((i+3)%NB_SRC)], 
+        ['ressource_'+((i+2)%NB_SRC), 'transformation','ressource_'+((i+3)%NB_SRC), 'ou', 'ressource_'+((i+4)%NB_SRC)]
+    )
+}
+for(let i=0; i<NB_SRC; i++) {
+    genUsine(
+        ['ressource_'+i, 'ressource_'+i, 'ressource_'+((i+2)%NB_SRC)], 
+        ['ressource_'+((i+1)%NB_SRC), 'transformation','ressource_'+((i+2)%NB_SRC), 'ou', 'ressource_'+((i+5)%NB_SRC)]
+    )
+}
+for(let i=0; i<NB_SRC; i++) {
+    genUsine(
+        ['ressource_'+i, 'ressource_'+i, 'ressource_'+((i+1)%NB_SRC)], 
+        ['ressource_'+((i+3)%NB_SRC), 'transformation','ressource_'+((i+1)%NB_SRC), 'ou', 'ressource_'+((i+6)%NB_SRC)]
+    )
+}
+// usine creation
+for(let i=0; i<NB_SRC; i++) {
+    genUsine(
+        ['ressource_'+i, 'ressource_'+i, 'ressource_'+((i+1)%NB_SRC), 'ressource_'+((i+1)%NB_SRC)], 
+        ['ressource', 'transformation', 'ressource_'+((i+1)%NB_SRC)]
+    )
+}
+
+// usine recyclage
+genUsine(['ressource_0', 'ressource_0', 'ressource_2', 'ressource_2'], ['ressource', 'ressource', 'transformation', 'ressource']);
+genUsine(['ressource_1', 'ressource_1', 'ressource_3', 'ressource_3'], ['ressource', 'ressource', 'transformation', 'ressource']);
+genUsine(['ressource_2', 'ressource_2', 'ressource_4', 'ressource_4'], ['ressource', 'ressource', 'transformation', 'ressource']);
+genUsine(['ressource_3', 'ressource_3', 'ressource_5', 'ressource_5'], ['ressource', 'ressource', 'transformation', 'ressource']);
+
+// usine regard
+genUsine(['ressource_4', 'ressource_4', 'ressource_6', 'ressource_6'], ['usine', 'transformation', 'usine']);
+genUsine(['ressource_5', 'ressource_5', 'ressource_0', 'ressource_0'], ['usine', 'transformation', 'usine']);
+genUsine(['ressource_6', 'ressource_6', 'ressource_1', 'ressource_1'], ['usine', 'transformation', 'usine']);
+
+// usine objectif
+genUsine(['ressource_1', 'ressource_2', 'ressource_3', 'ressource_4', 'ressource_5', 'ressource_6'], ['objectif_complete']);
+genUsine(['ressource_1', 'ressource_2', 'ressource_3', 'ressource_4', 'ressource_5', 'ressource_6'], ['objectif_complete']);
+
+//////////////////// function gen ////////////////////
+function genUsine(couts, effets) {
+    let idx_carte = nb_carte_gen++;
+
+    let idx_page = Math.trunc(idx_carte / nb_by_page);
+    let idx_carte_on_page = idx_carte - nb_by_page * idx_page;
+    let idx_ligne = Math.trunc((idx_carte_on_page / nb_colonne) % nb_ligne); 
+    let idx_colonne = Math.trunc(idx_carte_on_page % nb_colonne); 
+
+    // cree la carte
+    let carte = d3.select('#page'+idx_page).append('g')
+        .attr('transform', `translate(${idx_colonne*SLIVE_W+marge_W}, ${idx_ligne*SLIVE_H+marge_H})`)
+        .attr('id', 'carte'+idx_carte);
+
+    carte.append('rect')
+        .classed('carte_border', true)
+        .attr('x', 0) 
+        .attr('y', 0) 
+        .attr('width', SLIVE_W) 
+        .attr('height', SLIVE_H);
+        
+    carte.append('path')
+        .classed('effets_border', true)
+        .attr('d', `M 0 ${SLIVE_H-effet_H} L ${SLIVE_W} ${SLIVE_H-effet_H}`);
+        
+    carte.append('path')
+        .classed('couts_border', true)
+        .attr('d', `M 0 ${cout_H} L ${cout_W} ${cout_H} L ${cout_W+SLIVE_W*1/16} 0`);
+        
+    // cree les couts
+    let D3_couts = carte.append('g')
+        .classed('couts', true)
+        .attr('transform', `translate(${(cout_W/2)-(couts.length*img_size/2)}, ${cout_H/2-img_size/2})`)
+    couts.forEach((cout, idx)=> {
+        D3_couts.append('image')
+            .attr('transform', `translate(${idx*img_size}, 0)`)
+            .attr('href', `./symbole/${cout}.png`)
+    });
+    
+    // cree les effets
+    let D3_effets = carte.append('g')
+        .classed('effets', true)
+        .attr('transform', `translate(${(SLIVE_W/2)-(effets.length*img_size/2)}, ${(SLIVE_H-effet_H/2)-img_size/2})`)
+    effets.forEach((effet, idx)=> {
+        D3_effets.append('image')
+            .attr('transform', `translate(${idx*img_size}, 0)`)
+            .attr('href', `./symbole/${effet}.png`)
+    });
+}
+
+        </script>
+    </body>
+</html>
